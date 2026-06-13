@@ -1,0 +1,49 @@
+# Ancient Indian mathematics, applied to SPhotonix — verified
+
+Two algorithms from the Indian mathematical tradition, held to the project
+standard (every claim has a test; run the files).
+
+## 1. Aryabhata’s kuttaka (Aryabhatiya, c. 499 CE) → carry-free accumulator
+
+**Project problem touched:** the PE’s 32-bit accumulator is the widest carry
+chain in design.sv — a real critical-path limiter.
+
+**What was built & proven (`ancient_kernels.py`, 6/6 PASS):**
+
+- kuttaka (extended Euclid / “pulverizer”): identity verified, 5000 pairs
+- CRT reconstruction via kuttaka constants: EXHAUSTIVE round-trip, all 9009
+  ints for moduli {7,9,11,13}
+- RNS over {251,253,255,256}: M = 4,145,475,840; proven exact for any int8
+  dot product of length ≤ 126,509
+- RNS MAC == exact MAC, exhaustive over all 65,536 int8 pairs
+- RNS dot == int64 dot, lengths up to 100,000
+- every channel value < 256 → 8-bit datapaths suffice
+
+**Then wired into the array (`rns_systolic.py`):** register-for-register
+mirror of the proven golden model — same skew/de-skew/valid pipe/two-phase
+commit, LATENCY=7 — with the int32 partial-sum registers replaced by four
+≤8-bit residue channels and ONE CRT decoder at the array edge.
+
+- RNS array == golden array == A@W: 300 random trials, **0 mismatches**
+- per-cycle width audit: largest residue register ever observed = 255 < 256
+
+**Honest cost ledger:** RNS wins carry DEPTH (clock-speed lever), loses AREA
+(~4× multipliers). Decode sits off the hot path. This matches the published
+tradeoff (RNS-TPU patents US 10,599,398 / US 10,387,122; kuttaka-based CRT:
+Rao & Yang 2006, “Aryabhata Remainder Theorem”; RNS accelerators reaching
+FP32-class accuracy with ~6-bit channels: arXiv 2306.09481). A lever, not magic.
+
+## 2. Bakhshali square root (~3rd–7th c. CE) → quantvec normalization
+
+One Bakhshali step is QUARTIC (measured order ≈ 4.5–6 vs Newton’s ≈ 2.2–2.7
+in our test): correct digits roughly quadruple per step. Relevant wherever
+quantvec normalizes vectors. Verified empirically in `ancient_kernels.py`.
+
+## What ancient mathematics does NOT solve
+
+- The pending EDA Playground run of design.sv/testbench.sv (only you can do that)
+- IVF recall collapse on isotropic data (property of the method, not a bug)
+- A future `design_rns.sv` would itself need the same simulator gate
+
+Next hardware step if pursued: write design_rns.sv (8-bit modular MAC PEs +
+edge CRT decoder) — but only AFTER the existing design.sv passes a real tool.
